@@ -13,6 +13,9 @@ import {
   getNetworkToken,
   CIVIC
 } from './helpers';
+import CountdownTimer from '../CountdownTimer';
+import nftData from './../.cache/devnet-temp.json';
+
 
 const { SystemProgram } = web3;
 const opts = {
@@ -22,6 +25,11 @@ const opts = {
 const CandyMachine = ({ walletAddress }) => {
 
   const [candyMachine, setCandyMachine] = useState(null);
+  const [machineStats, setMachineStats] = useState(null); 
+  const [isMinting, setIsMinting] = useState(false);
+  const [isLoadingMints, setIsLoadingMints] = useState(false);
+  const [mints, setMints] = useState([]); 
+
 
   const getCandyMachineCreator = async (candyMachine) => {
     const candyMachineID = new PublicKey(candyMachine);
@@ -301,6 +309,7 @@ const CandyMachine = ({ walletAddress }) => {
 
   useEffect(() => {
     getCandyMachineState();
+    // eslint-disable-next-line
   }, []);
 
   const getProvider = () => {
@@ -378,8 +387,16 @@ const CandyMachine = ({ walletAddress }) => {
         price: candyMachine.data.price,
       },
     });
+
+    var mintedItems = []; 
+
+    for(var i = 0; i < itemsRedeemed; i++){
+      mintedItems.push(nftData.items[i]);
+    }
+
+    setMints(mintedItems);
   
-    console.log({
+    setMachineStats({
       itemsAvailable,
       itemsRedeemed,
       itemsRemaining,
@@ -389,18 +406,56 @@ const CandyMachine = ({ walletAddress }) => {
     });
   };
 
+  const renderMintedItems = () => {
+    return <div className='gif-grid'> {
+                  (mints.map(item => {
+                        return <div className="gif-item" key={item.name}>
+                                  <img src={item.imageLink} alt={item.name} ></img>
+                                </div>
+                      }))
+                  }
+          </div>
+  };
+ 
+
+  // Create render function
+  const renderDropTimer = () => {
+  // Get the current date and dropDate in a JavaScript Date object
+    const currentDate = new Date();
+    const dropDate = new Date(candyMachine.state.goLiveData * 1000);
+
+  // If currentDate is before dropDate, render our Countdown component
+    if (currentDate < dropDate) {
+      console.log('Before drop date!');
+     // Don't forget to pass over your dropDate!
+     return <CountdownTimer dropDate={dropDate} />;
+    }
+    // Else let's just return the current drop date
+    return <p>{`Drop Date: ${candyMachine.state.goLiveDateTimeString}`}</p>;
+  };
+
   return (
-  // Only show this if machineStats is available
-  candyMachine && (
-    <div className="machine-container">
-      <p>{`Drop Date: ${candyMachine.state.goLiveDateTimeString}`}</p>
-      <p>{`Items Minted: ${candyMachine.state.itemsRedeemed} / ${candyMachine.state.itemsAvailable}`}</p>
-      <button className="cta-button mint-button" onClick={null}>
-          Mint NFT
-      </button>
-    </div>
-  )
-);
+    candyMachine && (
+      <div className="machine-container">
+        {renderDropTimer()}
+        <p>{`Items Minted: ${candyMachine.state.itemsRedeemed} / ${candyMachine.state.itemsAvailable}`}</p>
+          {/* Check to see if these properties are equal! */}
+          {candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? (
+            <p className="sub-text">Sold Out 🙊</p>
+          ) : (
+            <button
+              className="cta-button mint-button"
+              onClick={mintToken}
+              disabled={isMinting}
+            >
+              Mint NFT
+            </button>
+          )}
+        {mints.length > 0 && renderMintedItems()}
+        {isLoadingMints && <p>LOADING MINTS...</p>}
+      </div>
+    )
+  );
 };
 
 export default CandyMachine;
